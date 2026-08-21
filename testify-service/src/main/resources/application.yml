@@ -1,0 +1,68 @@
+server:
+  port: 9002
+
+spring:
+  application:
+    name: testify-service
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration
+
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USER:testify}
+    password: ${RABBITMQ_PASSWORD:password}
+    listener:
+      simple:
+        retry:
+          enabled: true
+          initial-interval: 3s
+          max-attempts: 3
+          max-interval: 10s
+        default-requeue-rejected: false
+
+  datasource:
+    url: jdbc:postgresql://localhost:5432/testify_db
+    username: postgres
+    password: 123456
+    driver-class-name: org.postgresql.Driver
+
+  flyway:
+    enabled: true
+    schemas: testify
+    create-schemas: true
+    default-schema: testify
+
+  jpa:
+    hibernate:
+      "[ddl-auto]": update
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: true
+        default_schema: testify
+
+  threads:
+    virtual:
+      enabled: true
+
+testify:
+  log-dir: ./logs
+  max-concurrent-requests: 100
+
+app:
+  validation:
+    phone:
+      default-locale: "VN"
+      rules:
+        VN: '^0\d{9}$'
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+  metrics:
+    tags:
+      application: ${spring.application.name}

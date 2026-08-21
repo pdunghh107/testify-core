@@ -1,0 +1,80 @@
+spring:
+  cache:
+    type: simple
+  servlet:
+    multipart:
+      max-file-size: 100MB
+      max-request-size: 100MB
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+  config:
+    import: optional:file:.env[.properties]
+  application:
+    name: auth-service
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:${POSTGRES_PORT:5432}}/${DB_NAME:${POSTGRES_DB:testify_db}}
+    username: ${DB_USER:${POSTGRES_USER:postgres}}
+    password: ${DB_PASSWORD:${POSTGRES_PASSWORD:123456}}
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        default_schema: schema_auth
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+    open-in-view: false
+  flyway:
+    enabled: true
+    schemas: schema_auth
+    default-schema: schema_auth
+    locations: classpath:db/migration
+    create-schemas: true
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USER:testify}
+    password: ${RABBITMQ_PASSWORD:password}
+    listener:
+      simple:
+        retry:
+          enabled: true
+          initial-interval: 1000ms
+          max-attempts: 3
+          multiplier: 2.0
+server:
+  port: 8081
+  address: 0.0.0.0
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+  metrics:
+    tags:
+      application: ${spring.application.name}
+
+app:
+  validation:
+    phone:
+      default-locale: "VN"
+      rules:
+        VN: '^0\d{9}$'
+        US: '^\+1\d{10}$'
+  auth:
+    jwt-secret: 12345678901234567890123456789012
+    jwt-issuer: ${APP_AUTH_JWT_ISSUER:testify-auth}
+    access-token-minutes: 15
+    refresh-token-days: 7
+    expose-dev-secrets: true
+    seed-user-email: ${SEED_USER_EMAIL:superadmin@zcomini.local}
+    seed-user-password: ${SEED_USER_PASSWORD:ChangeMe123!}
+    internal-service-key: ${INTERNAL_SERVICE_KEY:dev-internal-key}
+
+zcomini:
+  audit:
+    mode: local

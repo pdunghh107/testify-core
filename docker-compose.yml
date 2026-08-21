@@ -1,0 +1,166 @@
+x-spring-env: &spring-env
+  SPRING_PROFILES_ACTIVE: postgres
+  SPRING_DATASOURCE_URL: "jdbc:postgresql://pgbouncer:6432/${POSTGRES_DB:-testify_db}?prepareThreshold=0&preparedStatementCacheQueries=0&preparedStatementCacheSizeMiB=0"
+  SPRING_DATASOURCE_USERNAME: "${POSTGRES_USER:-postgres}"
+  SPRING_DATASOURCE_PASSWORD: "${POSTGRES_PASSWORD:-password}"
+  SPRING_FLYWAY_URL: "jdbc:postgresql://postgres:5432/${POSTGRES_DB:-testify_db}"
+  SPRING_FLYWAY_USER: "${POSTGRES_USER:-postgres}"
+  SPRING_FLYWAY_PASSWORD: "${POSTGRES_PASSWORD:-password}"
+  SPRING_DATASOURCE_HIKARI_MAXIMUMPOOLSIZE: "4"
+  SPRING_DATASOURCE_HIKARI_MINIMUMIDLE: "1"
+  SPRING_DATASOURCE_HIKARI_IDLETIMEOUT: "600000"
+  SPRING_DATASOURCE_HIKARI_MAXLIFETIME: "1800000"
+  SPRING_DATASOURCE_HIKARI_CONNECTIONTIMEOUT: "30000"
+
+x-spring-service: &spring-service
+  restart: unless-stopped
+  depends_on:
+    postgres:
+      condition: service_healthy
+    pgbouncer:
+      condition: service_healthy
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: testify-postgres
+    restart: unless-stopped
+    command: postgres -c max_connections=${POSTGRES_MAX_CONNECTIONS:-200}
+    environment:
+      POSTGRES_DB: "${POSTGRES_DB:-testify_db}"
+      POSTGRES_USER: "${POSTGRES_USER:-postgres}"
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:-password}"
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - testify-postgres:/var/lib/postgresql/data
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-testify_db}",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  pgbouncer:
+    image: edoburu/pgbouncer:latest
+    container_name: testify-pgbouncer
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      POSTGRES_HOST: "postgres"
+      POSTGRES_PORT: "5432"
+      POSTGRES_DB: "${POSTGRES_DB:-testify_db}"
+      POSTGRES_USER: "${POSTGRES_USER:-postgres}"
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:-password}"
+      PGBOUNCER_PORT: "6432"
+      PGBOUNCER_POOL_MODE: "${PGBOUNCER_POOL_MODE:-transaction}"
+      PGBOUNCER_MAX_CLIENT_CONN: "${PGBOUNCER_MAX_CLIENT_CONN:-300}"
+      PGBOUNCER_DEFAULT_POOL_SIZE: "${PGBOUNCER_DEFAULT_POOL_SIZE:-32}"
+      PGBOUNCER_MIN_POOL_SIZE: "${PGBOUNCER_MIN_POOL_SIZE:-8}"
+      PGBOUNCER_RESERVE_POOL_SIZE: "${PGBOUNCER_RESERVE_POOL_SIZE:-8}"
+      PGBOUNCER_MAX_DB_CONNECTIONS: "${PGBOUNCER_MAX_DB_CONNECTIONS:-48}"
+      PGBOUNCER_SERVER_IDLE_TIMEOUT: "${PGBOUNCER_SERVER_IDLE_TIMEOUT:-30}"
+    ports:
+      - "${PGBOUNCER_PORT:-6432}:6432"
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "PGPASSWORD=$$POSTGRES_PASSWORD psql -h 127.0.0.1 -p 6432 -U $$POSTGRES_USER -d $$POSTGRES_DB -c 'SELECT 1;' >/dev/null",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 5s
+
+  redis:
+    image: redis:7-alpine
+    container_name: testify-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+
+  rabbitmq:
+    image: rabbitmq:3.13-management-alpine
+    container_name: testify-rabbitmq
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: "${RABBITMQ_USER:-testify}"
+      RABBITMQ_DEFAULT_PASS: "${RABBITMQ_PASSWORD:-password}"
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+
+  minio:
+    image: minio/minio:RELEASE.2025-01-20T14-49-07Z
+    container_name: testify-minio
+    restart: unless-stopped
+    environment:
+      MINIO_ROOT_USER: "${MINIO_ROOT_USER:-minio}"
+      MINIO_ROOT_PASSWORD: "${MINIO_ROOT_PASSWORD:-minio123}"
+    command: server /data --console-address ":9001"
+    ports:
+      # Thay đổi cổng 9000 thành 9002 để không trùng với testify-service
+      - "9002:9000"
+      - "9001:9001"
+    volumes:
+      - testify-minio:/data
+
+  testify-service:
+    <<: *spring-service
+    container_name: testify-service
+    depends_on:
+      postgres:
+        condition: service_healthy
+      pgbouncer:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_started
+      redis:
+        condition: service_started
+    build:
+      context: .
+      dockerfile: testify-service/Dockerfile
+    environment:
+      <<: *spring-env
+      APP_AUTH_JWT_SECRET: "${JWT_SECRET:-12345678901234567890123456789012}"
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+      RABBITMQ_HOST: "rabbitmq"
+      RABBITMQ_PORT: "${RABBITMQ_PORT:-5672}"
+      RABBITMQ_USER: "${RABBITMQ_USER:-testify}"
+      RABBITMQ_PASSWORD: "${RABBITMQ_PASSWORD:-password}"
+    ports:
+      - "9002:9002"
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: testify-prometheus
+    restart: unless-stopped
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: testify-grafana
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    depends_on:
+      - prometheus
+
+volumes:
+  testify-postgres:
+  testify-minio:

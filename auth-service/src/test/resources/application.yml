@@ -1,0 +1,39 @@
+spring:
+  datasource:
+    url: jdbc:h2:mem:authtest;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DEFAULT_NULL_ORDERING=HIGH;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE;INIT=CREATE SCHEMA IF NOT EXISTS schema_auth
+    username: sa
+    password:
+    driver-class-name: org.h2.Driver
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    properties:
+      hibernate:
+        default_schema: schema_auth
+        dialect: org.hibernate.dialect.H2Dialect
+    open-in-view: false
+  flyway:
+    enabled: false
+  rabbitmq:
+    listener:
+      simple:
+        auto-startup: false
+
+app:
+  auth:
+    jwt-secret: 12345678901234567890123456789012
+    access-token-minutes: 15
+    refresh-token-days: 7
+    expose-dev-secrets: false
+    seed-user-email: superadmin@zcomini.local
+    seed-user-password: ChangeMe123!
+    internal-service-key: dev-internal-key
+    order-service-url: http://localhost:8085
+  tenant:
+    service-base-url: http://localhost:8082
+    internal-service-key: dev-internal-key
+  notification:
+    rabbit:
+      exchange: notification.events
+      otp-queue: notification.otp.send
+      otp-routing-key: notification.otp.send
