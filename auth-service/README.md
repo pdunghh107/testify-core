@@ -28,7 +28,7 @@ Dự án tuân theo kiến trúc MVC chuẩn của Spring Boot, kết hợp vớ
 
 ## 🔌 Các API được cung cấp (Endpoints)
 
-Dưới đây là danh sách các API chính mà `auth-service` (đang chạy mặc định ở port `8081`) cung cấp.
+Dưới đây là danh sách các API chính mà `auth-service` (đang chạy mặc định ở port `9001`) cung cấp.
 
 ### 1. Xác thực (Authentication)
 - `POST /api/v1/auth/register`: Đăng ký tài khoản người dùng mới.

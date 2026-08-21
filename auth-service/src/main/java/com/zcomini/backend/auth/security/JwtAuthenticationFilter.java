@@ -50,20 +50,18 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             try {
                 Claims claims = jwtService.parse(token);
 
-                String subject = claims.getSubject();
-                String blacklistKey = "user_revoked:" + subject;
-                String revokedTimestampStr = stringRedisTemplate.opsForValue().get(blacklistKey);
+                if (isUserRevoked(claims)) {
+                    logger.debug("JWT token is revoked because user was deactivated or logged out globally");
+                    handlerExceptionResolver.resolveException(request, response, null,
+                            AuthException.tokenRevoked());
+                    return;
+                }
 
-                if (revokedTimestampStr != null && claims.getIssuedAt() != null) {
-                    long revokedTimestamp = Long.parseLong(revokedTimestampStr);
-                    long issuedAt = claims.getIssuedAt().getTime();
-
-                    if (issuedAt < revokedTimestamp) {
-                        logger.debug("JWT token is revoked because user was deactivated or logged out globally");
-                        handlerExceptionResolver.resolveException(request, response, null,
-                                AuthException.tokenRevoked());
-                        return;
-                    }
+                if (isTokenRevoked(claims)) {
+                    logger.debug("JWT token is revoked individually (Logout current device)");
+                    handlerExceptionResolver.resolveException(request, response, null,
+                            AuthException.tokenRevoked());
+                    return;
                 }
 
                 String role = claims.get("role", String.class);
@@ -95,5 +93,27 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         }
 
         return authorities;
+    }
+
+    private boolean isUserRevoked(Claims claims) {
+        String subject = claims.getSubject();
+        String blacklistKey = "user_revoked:" + subject;
+        String revokedTimestampStr = stringRedisTemplate.opsForValue().get(blacklistKey);
+
+        if (revokedTimestampStr != null && claims.getIssuedAt() != null) {
+            long revokedTimestamp = Long.parseLong(revokedTimestampStr);
+            long issuedAt = claims.getIssuedAt().getTime();
+            return issuedAt < revokedTimestamp;
+        }
+        return false;
+    }
+
+    private boolean isTokenRevoked(Claims claims) {
+        String jti = claims.getId();
+        if (StringUtils.hasText(jti)) {
+            String tokenBlacklistKey = "token_revoked:" + jti;
+            return Boolean.TRUE.equals(stringRedisTemplate.hasKey(tokenBlacklistKey));
+        }
+        return false;
     }
 }

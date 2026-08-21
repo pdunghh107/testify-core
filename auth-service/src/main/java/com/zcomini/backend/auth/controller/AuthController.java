@@ -110,20 +110,53 @@ public class AuthController {
     }
 
     /**
-     * Đăng xuất khỏi hệ thống.
+     * Chấm dứt phiên đăng nhập hiện tại trên thiết bị đang sử dụng.
      * <p>
-     * Gọi hàm thu hồi (revoke) Refresh Token hiện tại (nếu có) trên server
-     * và chỉ thị cho trình duyệt xóa bỏ Cookie lưu trữ Token này.
+     * API này thực hiện các bước bảo mật sau để đảm bảo đăng xuất an toàn:
+     * 1. Xóa bỏ Cookie chứa {@code Refresh Token} ở phía trình duyệt (Client).
+     * 2. Gọi Service để vô hiệu hóa vĩnh viễn {@code Refresh Token} này trong Database.
+     * 3. Trích xuất {@code Access Token} từ Header để đưa vào danh sách đen (Blacklist) trên Redis, 
+     *    ngăn chặn việc token bị đánh cắp và sử dụng lại.
      *
-     * @param refreshToken Chuỗi Token được lấy từ Cookie (nếu tồn tại).
-     * @param httpResponse Đối tượng HTTP Response dùng để xóa Cookie.
-     * @return Thông báo trạng thái đăng xuất.
+     * @param refreshToken Chuỗi Refresh Token tự động được trích xuất từ Cookie (có thể {@code null}).
+     * @param authHeader   Chuỗi Header chứa Access Token (định dạng {@code Bearer ...}), dùng để cấm cửa token hiện hành.
+     * @param httpResponse Đối tượng phản hồi HTTP, được sử dụng để tiêm lệnh xóa Cookie vào Browser.
+     * @return Thông báo xác nhận quá trình đăng xuất hoàn tất.
+     * @see com.zcomini.backend.auth.service.AuthService#logout(String, String)
      */
     @PostMapping("/logout")
     public MessageResponse logout(
             @CookieValue(required = false) String refreshToken,
+            @org.springframework.web.bind.annotation.RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authHeader,
             HttpServletResponse httpResponse) {
-        MessageResponse msg = authService.logout(refreshToken);
+        
+        String accessToken = null;
+        if (org.springframework.util.StringUtils.hasText(authHeader) && authHeader.startsWith("Bearer ")) {
+            accessToken = authHeader.substring(7);
+        }
+
+        MessageResponse msg = authService.logout(refreshToken, accessToken);
+        clearRefreshTokenCookie(httpResponse);
+        return msg;
+    }
+
+    /**
+     * Hủy bỏ toàn bộ phiên đăng nhập của người dùng trên mọi thiết bị.
+     * <p>
+     * API này giải quyết trường hợp nghi ngờ tài khoản bị xâm phạm hoặc người dùng muốn đăng xuất khỏi tất cả các nơi.
+     * Nó kích hoạt cấm cửa toàn cục (Global Revocation) bằng cách vô hiệu hóa mọi {@code Refresh Token} và 
+     * đưa định danh người dùng vào sổ đen Redis. Trình duyệt hiện tại cũng sẽ tự động bị xóa Cookie.
+     *
+     * @param authentication Đối tượng chứa thông tin Profile người dùng do Spring Security tự động tiêm vào (trích xuất từ JWT).
+     * @param httpResponse   Đối tượng phản hồi HTTP, được sử dụng để dọn dẹp Cookie ở thiết bị gọi API này.
+     * @return Thông báo xác nhận tài khoản đã được đăng xuất khỏi toàn bộ hệ thống.
+     * @see com.zcomini.backend.auth.service.AuthService#logoutAll(com.zcomini.backend.auth.security.AuthenticatedUser)
+     */
+    @PostMapping("/logout-all")
+    public MessageResponse logoutAll(
+            Authentication authentication,
+            HttpServletResponse httpResponse) {
+        MessageResponse msg = authService.logoutAll((AuthenticatedUser) authentication.getPrincipal());
         clearRefreshTokenCookie(httpResponse);
         return msg;
     }

@@ -2,7 +2,9 @@ package com.zcomini.backend.auth.service;
 
 import java.time.Instant;
 import java.time.OffsetDateTime;
+import java.util.Date;
 import java.util.List;
+import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
@@ -33,6 +35,7 @@ import com.zcomini.backend.shared.event.UserRegisteredEvent;
 import com.zcomini.backend.shared.util.HashUtils;
 import com.zcomini.backend.shared.util.StringCustom;
 
+import io.jsonwebtoken.Claims;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 
@@ -165,28 +168,61 @@ public class AuthService {
     }
 
     /**
-     * Xử lý luồng đăng xuất của người dùng.
+     * Đăng xuất người dùng khỏi thiết bị hiện tại và thu hồi các token liên quan.
      * <p>
-     * Phương thức này nhận vào Refresh Token hiện tại, tìm kiếm trong cơ sở dữ liệu
-     * và đánh dấu Token này là đã bị thu hồi (revoked) bằng cách cập nhật thời gian
-     * {@code revokedAt}.
-     * Điều này ngăn chặn kẻ gian sử dụng lại Refresh Token cũ để sinh ra Access
-     * Token mới.
+     * Quá trình này thực hiện hai việc:
+     * 1. Tìm và đánh dấu {@code Refresh Token} là đã bị thu hồi trong cơ sở dữ liệu
+     * để ngăn chặn việc cấp phát token mới.
+     * 2. Đưa {@code Access Token} hiện tại vào danh sách đen (blacklist) trên Redis
+     * dựa trên mã định danh JTI của nó.
      *
-     * @param tokenValue Chuỗi ký tự của Refresh Token cần thu hồi (có thể
-     *                   {@code null} nếu người dùng không gửi lên).
-     * @return Thông báo xác nhận đăng xuất thành công.
+     * @param refreshToken Chuỗi Refresh Token cần thu hồi (có thể truyền
+     *                     {@code null} nếu Client không đính kèm cookie).
+     * @param accessToken  Chuỗi Access Token nguyên bản từ Header để trích xuất JTI
+     *                     (có thể truyền {@code null}).
+     * @return Thông báo trạng thái đăng xuất thành công.
+     * @see #revokeAccessToken(String)
      */
     @Transactional
-    public MessageResponse logout(String tokenValue) {
-        if (tokenValue != null) {
-            refreshTokenRepository.findByTokenHash(HashUtils.sha256Hex(tokenValue))
+    public MessageResponse logout(String refreshToken, String accessToken) {
+        if (StringUtils.hasText(refreshToken)) {
+            refreshTokenRepository.findByTokenHash(HashUtils.sha256Hex(refreshToken))
                     .ifPresent(token -> {
                         token.setRevokedAt(OffsetDateTime.now());
                         refreshTokenRepository.save(token);
                     });
         }
+
+        revokeAccessToken(accessToken);
+
         return new MessageResponse("Đăng xuất thành công");
+    }
+
+    /**
+     * Đăng xuất người dùng khỏi tất cả các thiết bị đã đăng nhập.
+     * <p>
+     * Phương thức này vô hiệu hóa triệt để toàn bộ phiên làm việc của người dùng
+     * bằng cách:
+     * 1. Thu hồi mọi {@code Refresh Token} đang hoạt động trong cơ sở dữ liệu.
+     * 2. Thêm trực tiếp {@code userId} vào danh sách đen trên Redis để chặn mọi
+     * {@code Access Token} còn hạn.
+     * 
+     * @param principal Đối tượng chứa thông tin xác thực của người dùng đang thực
+     *                  hiện yêu cầu.
+     * @return Thông báo trạng thái đăng xuất toàn cục thành công.
+     * @see #revokeUserAccessToken(UUID)
+     */
+    @Transactional
+    public MessageResponse logoutAll(AuthenticatedUser principal) {
+        List<RefreshTokenEntity> tokens = refreshTokenRepository.findByUser_IdAndRevokedAtIsNull(principal.userId());
+        for (RefreshTokenEntity token : tokens) {
+            token.setRevokedAt(OffsetDateTime.now());
+        }
+        refreshTokenRepository.saveAll(tokens);
+
+        revokeUserAccessToken(principal.userId());
+
+        return new MessageResponse("Đăng xuất tất cả thiết bị thành công");
     }
 
     /**
@@ -314,13 +350,63 @@ public class AuthService {
         }
         refreshTokenRepository.saveAll(tokens);
 
-        // Add user to Redis blacklist for access token TTL (e.g. 30 minutes max)
-        stringRedisTemplate.opsForValue().set(
-                "user_revoked:" + user.getId(),
-                String.valueOf(Instant.now().toEpochMilli()), 30,
-                TimeUnit.MINUTES);
+        revokeUserAccessToken(principal.userId());
 
         return new MessageResponse("Vô hiệu hóa tài khoản thành công");
     }
 
+    /**
+     * Đưa một Access Token cụ thể vào danh sách đen (Blacklist) trên Redis thông
+     * qua mã định danh JTI.
+     * <p>
+     * Hàm này sẽ tự động giải mã JWT để lấy ra {@code jti} và {@code exp} (thời
+     * gian hết hạn).
+     * Nó tính toán thời gian sống còn lại (TTL) và lưu trữ key
+     * {@code token_revoked:{jti}}
+     * trên Redis đúng bằng khoảng thời gian TTL đó nhằm tối ưu bộ nhớ.
+     * Nếu token đã hết hạn hoặc không hợp lệ, hàm sẽ chủ động bỏ qua lỗi thay vì
+     * làm gián đoạn luồng thực thi.
+     *
+     * @param accessToken Chuỗi Access Token gốc cần thu hồi. Nếu truyền
+     *                    {@code null} hoặc chuỗi rỗng, hàm sẽ tự động kết thúc.
+     */
+    private void revokeAccessToken(String accessToken) {
+        try {
+            Claims claims = jwtService.parse(accessToken);
+            String jti = claims.getId();
+            Date expiration = claims.getExpiration();
+
+            if (StringUtils.hasText(jti) && expiration != null) {
+                long ttlMillis = expiration.getTime() - System.currentTimeMillis();
+                if (ttlMillis > 0) {
+                    stringRedisTemplate.opsForValue().set(
+                            "token_revoked:" + jti,
+                            "revoked",
+                            ttlMillis,
+                            TimeUnit.MILLISECONDS);
+                }
+            }
+        } catch (Exception ex) {
+        }
+    }
+
+    /**
+     * Đưa toàn bộ phiên làm việc của một người dùng vào danh sách đen (Blacklist)
+     * trên Redis.
+     * <p>
+     * Bằng cách lưu key {@code user_revoked:{userId}} kèm theo thời điểm thu hồi,
+     * mọi Access Token được phát hành trước thời điểm này sẽ bị
+     * {@link com.zcomini.backend.auth.security.JwtAuthenticationFilter}
+     * từ chối. Thời gian tồn tại (TTL) của key được thiết lập mặc định (VD: 30
+     * phút) bằng đúng cấu hình vòng đời của một Access Token.
+     *
+     * @param userId Mã định danh duy nhất (UUID) của người dùng cần thu hồi quyền
+     *               truy cập.
+     */
+    private void revokeUserAccessToken(UUID userId) {
+        stringRedisTemplate.opsForValue().set(
+                "user_revoked:" + userId.toString(),
+                String.valueOf(Instant.now().toEpochMilli()), 30,
+                TimeUnit.MINUTES);
+    }
 }

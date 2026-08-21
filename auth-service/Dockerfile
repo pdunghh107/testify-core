@@ -8,6 +8,6 @@ FROM eclipse-temurin:17-jre
 WORKDIR /app
 
 COPY --from=builder /workspace/auth-service/target/auth-service-*.jar /app/app.jar
-EXPOSE 8081
+EXPOSE 9001
 
 ENTRYPOINT ["java", "-jar", "/app/app.jar"]
