@@ -16,34 +16,9 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
-/**
- * Bộ lọc (Filter) đảm nhiệm việc quản lý và lan truyền mã định danh duy nhất
- * (Request ID)
- * cho mỗi yêu cầu HTTP đi vào hệ thống.
- * <p>
- * Luồng hoạt động:
- * <ol>
- * <li>Trích xuất {@code X-Request-Id} từ HTTP Header của request gửi đến.</li>
- * <li>Nếu Client không truyền lên, hệ thống sẽ tự động khởi tạo một UUID
- * mới.</li>
- * <li>Lưu trữ mã này vào {@link RequestContext} (ThreadLocal) để các tầng bên
- * dưới (Service, Log) có thể truy cập.</li>
- * <li>Nhúng ngược mã này vào HTTP Response Header để trả về cho Client, phục vụ
- * cho việc truy vết và debug.</li>
- * </ol>
- */
 @Component
 public class RequestIdFilter extends OncePerRequestFilter {
 
-    /**
-     * Thực thi logic lọc cho mỗi request.
-     *
-     * @param request     Đối tượng chứa thông tin HTTP Request gửi đến.
-     * @param response    Đối tượng chứa thông tin HTTP Response sẽ trả về.
-     * @param filterChain Chuỗi các filter tiếp theo trong vòng đời xử lý request.
-     * @throws ServletException Nếu có lỗi xảy ra trong quá trình xử lý Servlet.
-     * @throws IOException      Nếu có lỗi I/O xảy ra.
-     */
     @Override
     protected void doFilterInternal(
             @NonNull HttpServletRequest request,

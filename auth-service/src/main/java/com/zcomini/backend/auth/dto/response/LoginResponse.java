@@ -4,13 +4,6 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 
 import com.zcomini.backend.auth.entity.UserEntity;
 
-/**
- * DTO đại diện cho kết quả trả về sau khi đăng nhập thành công.
- *
- * @param accessToken  Chuỗi JWT dùng để xác thực các API sau này.
- * @param refreshToken Chuỗi Refresh Token (được ẩn khỏi body response bằng {@code @JsonIgnore} vì đã lưu trong Cookie).
- * @param user         Thông tin cơ bản của người dùng.
- */
 public record LoginResponse(
         String accessToken,
         @JsonIgnore String refreshToken,

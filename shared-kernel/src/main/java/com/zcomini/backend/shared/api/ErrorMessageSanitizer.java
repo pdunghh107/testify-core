@@ -34,8 +34,7 @@ public final class ErrorMessageSanitizer {
             "org.springframework.dao",
             "org.hibernate",
             "jakarta.persistence",
-            "java.sql"
-    );
+            "java.sql");
 
     private ErrorMessageSanitizer() {
     }
@@ -81,12 +80,6 @@ public final class ErrorMessageSanitizer {
         return false;
     }
 
-    /**
-     * Map một mã trạng thái HTTP sang thông điệp tiếng Việt thân thiện mặc định.
-     *
-     * @param status Trạng thái HTTP.
-     * @return Thông báo lỗi tương ứng.
-     */
     public static String getDefaultMessageForStatus(HttpStatus status) {
         return switch (status) {
             case BAD_REQUEST -> "Yêu cầu chưa hợp lệ.";

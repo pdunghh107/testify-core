@@ -1,10 +1,26 @@
 package com.zcomini.backend.shared.web;
 
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.UUID;
+
+import javax.crypto.SecretKey;
+
+import org.springframework.http.HttpHeaders;
+import org.springframework.stereotype.Component;
+import org.springframework.util.StringUtils;
+import org.springframework.web.filter.OncePerRequestFilter;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
+
 import com.zcomini.backend.shared.api.enums.ApiErrorCode;
 import com.zcomini.backend.shared.tenant.HeaderNames;
 import com.zcomini.backend.shared.tenant.LegacyRoleAccess;
 import com.zcomini.backend.shared.tenant.RequestContext;
+
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.JwtException;
@@ -14,18 +30,6 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import org.springframework.http.HttpHeaders;
-import org.springframework.stereotype.Component;
-import org.springframework.util.StringUtils;
-import org.springframework.web.filter.OncePerRequestFilter;
-
-import javax.crypto.SecretKey;
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.util.Arrays;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
@@ -94,8 +98,6 @@ public class RequestContextFilter extends OncePerRequestFilter {
                     .parseSignedClaims(token)
                     .getPayload();
 
-
-
             populateUuid(resolveTenantId(claims, request), RequestContext::setTenantId);
             populateUuid(resolveClaim(claims, "sub"), RequestContext::setUserId);
             populateUuid(resolveClaim(claims, "membershipId", request.getHeader(HeaderNames.MEMBERSHIP_ID)),
@@ -134,33 +136,35 @@ public class RequestContextFilter extends OncePerRequestFilter {
             return true;
         } catch (ExpiredJwtException ex) {
             log.warn("Access token has expired");
-            /* TODO: Bỏ comment đoạn dưới đây khi muốn bật lại Auth
-            ApiErrorResponseWriter.write(
-                    objectMapper,
-                    serviceName,
-                    response,
-                    org.springframework.http.HttpStatus.UNAUTHORIZED,
-                    ApiErrorCode.UNAUTHORIZED.value(),
-                    "Access token has expired",
-                    request.getRequestURI(),
-                    List.of());
-            return true;
-            */
+            /*
+             * TODO: Bỏ comment đoạn dưới đây khi muốn bật lại Auth
+             * ApiErrorResponseWriter.write(
+             * objectMapper,
+             * serviceName,
+             * response,
+             * org.springframework.http.HttpStatus.UNAUTHORIZED,
+             * ApiErrorCode.UNAUTHORIZED.value(),
+             * "Access token has expired",
+             * request.getRequestURI(),
+             * List.of());
+             * return true;
+             */
             return false; // Tạm thời bypass auth
         } catch (JwtException | IllegalArgumentException ex) {
             log.warn("Invalid access token");
-            /* TODO: Bỏ comment đoạn dưới đây khi muốn bật lại Auth
-            ApiErrorResponseWriter.write(
-                    objectMapper,
-                    serviceName,
-                    response,
-                    org.springframework.http.HttpStatus.UNAUTHORIZED,
-                    ApiErrorCode.UNAUTHORIZED.value(),
-                    "Invalid access token",
-                    request.getRequestURI(),
-                    List.of());
-            return true;
-            */
+            /*
+             * TODO: Bỏ comment đoạn dưới đây khi muốn bật lại Auth
+             * ApiErrorResponseWriter.write(
+             * objectMapper,
+             * serviceName,
+             * response,
+             * org.springframework.http.HttpStatus.UNAUTHORIZED,
+             * ApiErrorCode.UNAUTHORIZED.value(),
+             * "Invalid access token",
+             * request.getRequestURI(),
+             * List.of());
+             * return true;
+             */
             return false; // Tạm thời bypass auth
         }
     }

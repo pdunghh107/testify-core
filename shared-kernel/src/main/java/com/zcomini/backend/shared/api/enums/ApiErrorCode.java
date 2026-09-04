@@ -1,16 +1,5 @@
 package com.zcomini.backend.shared.api.enums;
 
-/**
- * Định nghĩa bảng mã lỗi chuẩn toàn cục cho các API của Testify Microservices.
- * <p>
- * Enum này tập hợp tất cả các mã trạng thái HTTP tiêu chuẩn được hệ thống sử dụng,
- * đồng thời cung cấp cơ chế để định nghĩa các mã lỗi nghiệp vụ đặc thù (như lỗi xác thực) 
- * mà vẫn tuân thủ chặt chẽ cấu trúc phản hồi của API. Bằng cách sử dụng mã HTTP mặc định 
- * (ví dụ: {@code "404"}) thay vì chuỗi tên (như {@code "NOT_FOUND"}), hệ thống đảm bảo 
- * tính đóng-mở (Open-Closed Principle) khi có sự thay đổi tên gọi từ các phiên bản Spring.
- * 
- * @see com.zcomini.backend.shared.api.dto.ApiError
- */
 public enum ApiErrorCode {
 
     BAD_REQUEST(400, "400"),
@@ -64,53 +53,19 @@ public enum ApiErrorCode {
     private final int status;
     private final String code;
 
-    /**
-     * Khởi tạo một mã lỗi API với mã trạng thái HTTP và mã định danh lỗi.
-     *
-     * @param status Mã trạng thái HTTP thực tế (ví dụ: 400, 404, 500).
-     * @param code   Mã định danh lỗi dạng chuỗi, được trả về cho Frontend (ví dụ: {@code "404"} hoặc {@code "AUTH.TOKEN_EXPIRED"}).
-     */
     ApiErrorCode(int status, String code) {
         this.status = status;
         this.code = code;
     }
 
-    /**
-     * Lấy mã trạng thái HTTP chuẩn của lỗi hiện tại.
-     * <p>
-     * Dùng để thiết lập HTTP Status cho Response gửi về cho Client.
-     *
-     * @return Mã trạng thái HTTP (ví dụ: 404, 500).
-     */
     public int status() {
         return status;
     }
 
-    /**
-     * Lấy chuỗi định danh mã lỗi tương ứng để trả về trong payload của API.
-     * <p>
-     * Thay vì trả về tên của Enum (ví dụ: {@code "UNPROCESSABLE_CONTENT"}), hệ thống
-     * sẽ trả về trực tiếp giá trị của trường {@code code} (như {@code "422"}). 
-     * Điều này đảm bảo tính tương thích và ổn định lâu dài.
-     *
-     * @return Chuỗi chứa mã lỗi cụ thể (ví dụ: {@code "422"} hoặc {@code "AUTH.TOKEN_INVALID"}).
-     */
     public String value() {
         return code;
     }
 
-    /**
-     * Truy xuất mã định danh lỗi mặc định (chuẩn HTTP) tương ứng với một mã trạng thái HTTP cho trước.
-     * <p>
-     * Phương thức này đóng vai trò như một cơ chế dự phòng (fallback) khi một ngoại lệ nghiệp vụ 
-     * (BusinessException) không cung cấp mã lỗi cụ thể. Hệ thống sẽ tự động đối chiếu mã HTTP 
-     * được truyền vào và trả ra mã định danh chuẩn. Mọi mã lỗi ngoại lệ nghiệp vụ (như {@code AUTH_}) 
-     * sẽ bị bỏ qua một cách an toàn nhờ thiết kế map tĩnh (switch).
-     *
-     * @param status Mã trạng thái HTTP cần tìm kiếm (ví dụ: 404).
-     * @return Chuỗi định danh lỗi mặc định (ví dụ: {@code "404"}). Trả về {@code "500"} nếu không tìm thấy mã phù hợp.
-     * @see com.zcomini.backend.shared.exception.BusinessException
-     */
     public static String defaultForStatus(int status) {
         return switch (status) {
             case 400 -> BAD_REQUEST.value();
