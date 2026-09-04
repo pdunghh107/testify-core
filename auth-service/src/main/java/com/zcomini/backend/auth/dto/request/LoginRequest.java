@@ -5,6 +5,6 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
 public record LoginRequest(
-        @NotBlank(message = "{email.required}") @Email(message = "{email.invalid}") String email,
-        @NotBlank(message = "{password.required}") @Size(max = 100) String password) {
+                @NotBlank(message = "Vui lòng nhập email") @Email(message = "Email không hợp lệ") String email,
+                @NotBlank(message = "Vui lòng nhập mật khẩu") @Size(max = 72, message = "Mật khẩu không hợp lệ") String password) {
 }

@@ -8,10 +8,10 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
 public record RegisterRequest(
-                @NotBlank(message = "{fullname.required}") @Size(min = 2, max = 255, message = "{fullname.invalid}") String fullName,
-                @NotBlank(message = "{phone.required}") @ValidPhone String phone,
-                @NotBlank(message = "{email.required}") @Email(message = "{email.invalid}") String email,
-                @NotBlank(message = "{password.required}") @ValidPassword String password,
-                @NotBlank(message = "{password.required}") String confirmPassword,
-                String avatarUrl) {
+        @NotBlank(message = "Vui lòng nhập họ và tên") @Size(min = 2, max = 255, message = "Họ và tên không hợp lệ") String fullName,
+        @NotBlank(message = "Vui lòng nhập số điện thoại") @ValidPhone String phone,
+        @NotBlank(message = "Vui lòng nhập email") @Email(message = "Email không hợp lệ") String email,
+        @NotBlank(message = "Vui lòng nhập mật khẩu") @ValidPassword String password,
+        @NotBlank(message = "Vui lòng nhập lại mật khẩu") String confirmPassword,
+        String avatarUrl) {
 }

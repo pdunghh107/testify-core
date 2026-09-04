@@ -12,31 +12,31 @@ public final class AuthException {
 
     public static BusinessException tokenExpired() {
         return new BusinessException(HttpStatus.UNAUTHORIZED,
-                ApiErrorCode.AUTH_TOKEN_EXPIRED.value(),
+                ApiErrorCode.UNAUTHORIZED.value(),
                 "Phiên đăng nhập đã hết hạn.");
     }
 
     public static BusinessException tokenInvalid() {
         return new BusinessException(HttpStatus.UNAUTHORIZED,
-                ApiErrorCode.AUTH_TOKEN_INVALID.value(),
+                ApiErrorCode.UNAUTHORIZED.value(),
                 "Phiên đăng nhập không hợp lệ.");
     }
 
     public static BusinessException tokenRevoked() {
         return new BusinessException(HttpStatus.UNAUTHORIZED,
-                ApiErrorCode.AUTH_TOKEN_REVOKED.value(),
+                ApiErrorCode.UNAUTHORIZED.value(),
                 "Phiên đăng nhập đã bị thu hồi.");
     }
 
     public static BusinessException refreshTokenInvalid() {
         return new BusinessException(HttpStatus.UNAUTHORIZED,
-                ApiErrorCode.AUTH_REFRESH_TOKEN_INVALID.value(),
+                ApiErrorCode.UNAUTHORIZED.value(),
                 "Phiên đăng nhập không hợp lệ hoặc đã hết hạn.");
     }
 
     public static BusinessException credentialsInvalid() {
         return new BusinessException(HttpStatus.UNAUTHORIZED,
-                ApiErrorCode.AUTH_CREDENTIALS_INVALID.value(),
+                ApiErrorCode.UNAUTHORIZED.value(),
                 "Email hoặc mật khẩu không chính xác.");
     }
 
@@ -47,8 +47,8 @@ public final class AuthException {
     }
 
     public static BusinessException userInactive() {
-        return new BusinessException(HttpStatus.FORBIDDEN,
-                ApiErrorCode.AUTH_ACCOUNT_LOCKED.value(),
+        return new BusinessException(HttpStatus.LOCKED,
+                ApiErrorCode.LOCKED.value(),
                 "Tài khoản đã bị vô hiệu hóa. Vui lòng liên hệ hỗ trợ.");
     }
 

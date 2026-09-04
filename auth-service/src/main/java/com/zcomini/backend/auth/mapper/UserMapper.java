@@ -14,7 +14,7 @@ public final class UserMapper {
         UserEntity user = new UserEntity();
         user.setEmail(request.email());
         user.setPasswordHash(encodedPassword);
-        user.setFullName(request.fullName() != null ? request.fullName().trim() : null);
+        user.setFullName(request.fullName().trim());
         user.setPhone(request.phone());
         user.setAvatarUrl(request.avatarUrl());
         user.setRole(roleCode);
@@ -22,4 +22,5 @@ public final class UserMapper {
         user.setLastLoginAt(OffsetDateTime.now());
         return user;
     }
+
 }

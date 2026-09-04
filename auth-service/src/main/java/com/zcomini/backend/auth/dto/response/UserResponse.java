@@ -12,6 +12,7 @@ public record UserResponse(
         String avatarUrl,
         String role,
         boolean active) {
+
     public static UserResponse from(UserEntity entity) {
         return new UserResponse(
                 entity.getId(),

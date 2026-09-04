@@ -2,6 +2,7 @@ package com.zcomini.backend.shared.api.enums;
 
 public enum ApiErrorCode {
 
+    // [400]
     BAD_REQUEST(400, "400"),
     UNAUTHORIZED(401, "401"),
     PAYMENT_REQUIRED(402, "402"),
@@ -31,6 +32,7 @@ public enum ApiErrorCode {
     REQUEST_HEADER_FIELDS_TOO_LARGE(431, "431"),
     UNAVAILABLE_FOR_LEGAL_REASONS(451, "451"),
 
+    // [500]
     INTERNAL_SERVER_ERROR(500, "500"),
     NOT_IMPLEMENTED(501, "501"),
     BAD_GATEWAY(502, "502"),
@@ -43,6 +45,9 @@ public enum ApiErrorCode {
     NOT_EXTENDED(510, "510"),
     NETWORK_AUTHENTICATION_REQUIRED(511, "511"),
 
+    // TODO: Remove
+    // [CUSTOM]
+    // [AUTH_SERVICE]
     AUTH_TOKEN_EXPIRED(401, "AUTH.TOKEN_EXPIRED"),
     AUTH_TOKEN_INVALID(401, "AUTH.TOKEN_INVALID"),
     AUTH_TOKEN_REVOKED(401, "AUTH.TOKEN_REVOKED"),

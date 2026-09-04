@@ -16,6 +16,7 @@ import org.springframework.web.util.UriComponentsBuilder;
 
 import com.fasterxml.jackson.databind.JsonNode;
 
+import com.zcomini.backend.auth.client.dto.HostAppIdentity;
 import com.zcomini.backend.auth.config.AuthProperties;
 import com.zcomini.backend.shared.api.enums.ApiErrorCode;
 import com.zcomini.backend.shared.exception.BusinessException;

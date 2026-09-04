@@ -1,4 +1,4 @@
-package com.zcomini.backend.auth.client;
+package com.zcomini.backend.auth.client.dto;
 
 import com.fasterxml.jackson.databind.JsonNode;
 

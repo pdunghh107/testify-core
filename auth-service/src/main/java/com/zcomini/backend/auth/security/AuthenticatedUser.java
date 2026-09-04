@@ -3,7 +3,7 @@ package com.zcomini.backend.auth.security;
 import java.util.UUID;
 
 public record AuthenticatedUser(
-        UUID userId,
-        String email,
-        String role) {
+                UUID userId,
+                String email,
+                String role) {
 }

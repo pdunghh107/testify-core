@@ -15,7 +15,6 @@ public class AuditLogRabbitConfig {
     public static final String AUDIT_QUEUE = "auth.audit.log.queue";
     public static final String AUDIT_ROUTING_KEY = "audit.log.#";
 
-    // Cấu hình Dead Letter
     public static final String AUDIT_DLX_EXCHANGE = "testify.audit.dlx";
     public static final String AUDIT_DLQ_QUEUE = "auth.audit.log.dlq";
 

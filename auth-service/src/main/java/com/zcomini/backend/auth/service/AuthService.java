@@ -7,8 +7,6 @@ import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
-import org.springframework.amqp.rabbit.core.RabbitTemplate;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -27,13 +25,13 @@ import com.zcomini.backend.auth.entity.RefreshTokenEntity;
 import com.zcomini.backend.auth.entity.UserEntity;
 import com.zcomini.backend.auth.exception.AuthException;
 import com.zcomini.backend.auth.mapper.UserMapper;
+import com.zcomini.backend.auth.message.AuthMessage;
 import com.zcomini.backend.auth.repository.RefreshTokenRepository;
 import com.zcomini.backend.auth.repository.UserRepository;
 import com.zcomini.backend.auth.security.AuthenticatedUser;
+import com.zcomini.backend.auth.validate.AuthValidator;
 import com.zcomini.backend.shared.api.dto.MessageResponse;
-import com.zcomini.backend.shared.event.UserRegisteredEvent;
 import com.zcomini.backend.shared.util.HashUtils;
-import com.zcomini.backend.shared.util.StringCustom;
 
 import io.jsonwebtoken.Claims;
 import jakarta.transaction.Transactional;
@@ -49,28 +47,27 @@ public class AuthService {
     private final JwtService jwtService;
     private final UserMapper userMapper;
     private final StringRedisTemplate stringRedisTemplate;
-    private final RabbitTemplate rabbitTemplate;
 
-    @Value("${app.notification.rabbit.exchange:notification.events}")
-    private String exchangeName;
+    // 3. Validate
+    private final AuthValidator authValidator;
+    // 4. Message
+    private final AuthMessage authMessage;
 
     @Transactional
     public RegisterResponse register(RegisterRequest request, String ipAddress) {
-        if (!request.password().equals(request.confirmPassword())) {
-            throw AuthException.passwordMismatch();
-        }
-        if (userRepository.findByEmailIgnoreCase(request.email()).isPresent()) {
-            throw AuthException.emailTaken();
-        }
+        // 1. Check validate
+        authValidator.registerValidation(request);
+        // 2. Mapping dữ liệu
         UserEntity user = userMapper.toRegister(request, passwordEncoder.encode(request.password()), "user");
+        // 3. Save dữ liệu
         userRepository.save(user);
+        // 4. Tạo và lưu token
+        String accessToken = jwtService.createAccessToken(user);
         String refreshToken = jwtService.saveRefresh(user);
-
-        rabbitTemplate.convertAndSend(exchangeName, "user.registered",
-                new UserRegisteredEvent(user.getId(), user.getEmail(),
-                        StringCustom.extractUsernameFromEmail(request.email()) + "'s Workspace"));
-
-        return RegisterResponse.from(jwtService.createAccessToken(user), refreshToken, user);
+        // 5. Gửi sự kiện [người dùng đăng ký]
+        authMessage.sendUserCreatedMessage(user, request.email());
+        // 6. Return dữ liệu
+        return RegisterResponse.from(accessToken, refreshToken, user);
     }
 
     @Transactional
@@ -84,8 +81,10 @@ public class AuthService {
             throw AuthException.credentialsInvalid();
         }
         user.setLastLoginAt(OffsetDateTime.now());
+        // 4. Tạo và lưu token
+        String accessToken = jwtService.createAccessToken(user);
         String refreshToken = jwtService.saveRefresh(user);
-        return LoginResponse.from(jwtService.createAccessToken(user), refreshToken, user);
+        return LoginResponse.from(accessToken, refreshToken, user);
     }
 
     @Transactional
