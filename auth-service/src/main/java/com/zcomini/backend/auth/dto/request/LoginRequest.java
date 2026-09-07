@@ -1,10 +1,11 @@
 package com.zcomini.backend.auth.dto.request;
 
+import com.zcomini.backend.auth.validate.AuthValidateString;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
 public record LoginRequest(
-                @NotBlank(message = "Vui lòng nhập email") @Email(message = "Email không hợp lệ") String email,
-                @NotBlank(message = "Vui lòng nhập mật khẩu") @Size(max = 72, message = "Mật khẩu không hợp lệ") String password) {
+        @NotBlank(message = AuthValidateString.EMAIL_REQUIRED) @Email(message = AuthValidateString.EMAIL_INVALID) String email,
+        @NotBlank(message = AuthValidateString.PASSWORD_REQUIRED) @Size(max = 72, message = AuthValidateString.PASSWORD_INVALID) String password) {
 }

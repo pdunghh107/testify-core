@@ -10,52 +10,10 @@ public final class AuthException {
     private AuthException() {
     }
 
-    public static BusinessException tokenExpired() {
-        return new BusinessException(HttpStatus.UNAUTHORIZED,
-                ApiErrorCode.UNAUTHORIZED.value(),
-                "Phiên đăng nhập đã hết hạn.");
-    }
-
-    public static BusinessException tokenInvalid() {
-        return new BusinessException(HttpStatus.UNAUTHORIZED,
-                ApiErrorCode.UNAUTHORIZED.value(),
-                "Phiên đăng nhập không hợp lệ.");
-    }
-
-    public static BusinessException tokenRevoked() {
-        return new BusinessException(HttpStatus.UNAUTHORIZED,
-                ApiErrorCode.UNAUTHORIZED.value(),
-                "Phiên đăng nhập đã bị thu hồi.");
-    }
-
-    public static BusinessException refreshTokenInvalid() {
-        return new BusinessException(HttpStatus.UNAUTHORIZED,
-                ApiErrorCode.UNAUTHORIZED.value(),
-                "Phiên đăng nhập không hợp lệ hoặc đã hết hạn.");
-    }
-
     public static BusinessException credentialsInvalid() {
         return new BusinessException(HttpStatus.UNAUTHORIZED,
                 ApiErrorCode.UNAUTHORIZED.value(),
                 "Email hoặc mật khẩu không chính xác.");
-    }
-
-    public static BusinessException userNotFound() {
-        return new BusinessException(HttpStatus.NOT_FOUND,
-                ApiErrorCode.NOT_FOUND.value(),
-                "Người dùng không tồn tại");
-    }
-
-    public static BusinessException userInactive() {
-        return new BusinessException(HttpStatus.LOCKED,
-                ApiErrorCode.LOCKED.value(),
-                "Tài khoản đã bị vô hiệu hóa. Vui lòng liên hệ hỗ trợ.");
-    }
-
-    public static BusinessException userLocked() {
-        return new BusinessException(HttpStatus.TOO_MANY_REQUESTS,
-                ApiErrorCode.TOO_MANY_REQUESTS.value(),
-                "Tài khoản tạm thời bị khóa do đăng nhập sai quá nhiều lần. Vui lòng thử lại sau");
     }
 
     public static BusinessException emailTaken() {

@@ -16,7 +16,7 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
 import org.springframework.web.servlet.HandlerExceptionResolver;
 
-import com.zcomini.backend.auth.exception.AuthException;
+import com.zcomini.backend.auth.exception.TokenException;
 import com.zcomini.backend.auth.service.JwtService;
 
 import io.jsonwebtoken.Claims;
@@ -53,14 +53,14 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 if (isUserRevoked(claims)) {
                     logger.debug("JWT token is revoked because user was deactivated or logged out globally");
                     handlerExceptionResolver.resolveException(request, response, null,
-                            AuthException.tokenRevoked());
+                            TokenException.tokenRevoked());
                     return;
                 }
 
                 if (isTokenRevoked(claims)) {
                     logger.debug("JWT token is revoked individually (Logout current device)");
                     handlerExceptionResolver.resolveException(request, response, null,
-                            AuthException.tokenRevoked());
+                            TokenException.tokenRevoked());
                     return;
                 }
 
